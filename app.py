@@ -3,17 +3,110 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
-st.set_page_config(page_title="Heart Disease Classification", layout="wide")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(
+    page_title="Heart Disease ML Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-st.title("Heart Disease Prediction – ML Assignment 2")
+# ---------------- THEME ADAPTIVE CSS ----------------
+st.markdown("""
+<style>
 
-st.markdown("Upload test dataset and select a model to evaluate.")
+/* Titles */
+.main-title {
+    font-size: 40px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 5px;
+}
 
-uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+.subtitle {
+    text-align: center;
+    font-size: 16px;
+    opacity: 0.7;
+    margin-bottom: 25px;
+}
 
-model_name = st.selectbox(
+/* Section Headers */
+.section-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+/* Metric Cards */
+.metric-card {
+    padding: 28px;
+    border-radius: 12px;
+    background-color: var(--secondary-background-color);
+    border: 1px solid rgba(128,128,128,0.25);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.metric-title {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+
+.metric-value {
+    font-size: 30px;
+    font-weight: 700;
+}
+
+/* Adaptive Button */
+.stButton > button {
+    border-radius: 8px;
+    height: 3em;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+}
+
+/* DataFrame Styling */
+[data-testid="stDataFrame"] {
+    border: 1px solid rgba(128,128,128,0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 50px;
+    font-size: 13px;
+    opacity: 0.6;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- HEADER ----------------
+st.markdown('<div class="main-title">Heart Disease Prediction Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Machine Learning Classification Models – Assignment 2</div>', unsafe_allow_html=True)
+
+# ---------------- SIDEBAR ----------------
+st.sidebar.title("Configuration")
+
+uploaded_file = st.sidebar.file_uploader("Upload CSV Dataset", type=["csv"])
+
+model_name = st.sidebar.selectbox(
     "Select Model",
     [
         "Logistic_Regression",
@@ -25,38 +118,107 @@ model_name = st.selectbox(
     ]
 )
 
-if uploaded_file:
+run_button = st.sidebar.button("Run Model")
 
-    data = pd.read_csv(uploaded_file)
+# ---------------- MAIN EXECUTION ----------------
+if run_button:
 
-    st.subheader("Uploaded Data Preview")
-    st.dataframe(data.head())
+    if uploaded_file is None:
+        st.warning("Please upload a dataset from the sidebar.")
+    else:
+        try:
+            with st.spinner("Running model..."):
 
-    # Load saved objects
-    model = joblib.load(f"model/{model_name}.pkl")
-    scaler = joblib.load("model/scaler.pkl")
-    feature_columns = joblib.load("model/feature_columns.pkl")
+                data = pd.read_csv(uploaded_file)
 
-    # Preprocess uploaded data
-    data = pd.get_dummies(data, drop_first=True)
-    data = data.reindex(columns=feature_columns, fill_value=0)
-    data_scaled = scaler.transform(data)
+                # Load model artifacts
+                model = joblib.load(f"model/{model_name}.pkl")
+                scaler = joblib.load("model/scaler.pkl")
+                feature_columns = joblib.load("model/feature_columns.pkl")
 
-    predictions = model.predict(data_scaled)
+                # Separate target
+                if "HeartDisease" in data.columns:
+                    y_true = data["HeartDisease"]
+                    data = data.drop("HeartDisease", axis=1)
+                else:
+                    y_true = None
 
-    st.subheader("Predictions")
-    st.write(predictions)
+                # Preprocess
+                data_processed = pd.get_dummies(data, drop_first=True)
+                data_processed = data_processed.reindex(columns=feature_columns, fill_value=0)
+                data_scaled = scaler.transform(data_processed)
 
-    # If target column exists
-    if "HeartDisease" in data.columns:
-        y_true = data["HeartDisease"]
+                predictions = model.predict(data_scaled)
 
-        st.subheader("Classification Report")
-        st.text(classification_report(y_true, predictions))
+            st.success("Model executed successfully.")
 
-        st.subheader("Confusion Matrix")
-        cm = confusion_matrix(y_true, predictions)
+            if y_true is not None:
 
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-        st.pyplot(fig)
+                accuracy = accuracy_score(y_true, predictions)
+                report_dict = classification_report(y_true, predictions, output_dict=True)
+
+                # ---------------- PERFORMANCE OVERVIEW ----------------
+                st.markdown('<div class="section-title">Model Performance Overview</div>', unsafe_allow_html=True)
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-title">Accuracy</div>
+                        <div class="metric-value">{accuracy:.3f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-title">Precision</div>
+                        <div class="metric-value">{report_dict['weighted avg']['precision']:.3f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="metric-title">Recall</div>
+                        <div class="metric-value">{report_dict['weighted avg']['recall']:.3f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("---")
+
+                # ---------------- DETAILED REPORT ----------------
+                st.markdown('<div class="section-title">Detailed Classification Report</div>', unsafe_allow_html=True)
+
+                report_df = pd.DataFrame(report_dict).transpose()
+                st.dataframe(report_df.style.format("{:.3f}"))
+
+                st.markdown("---")
+
+                # ---------------- CONFUSION MATRIX ----------------
+                st.markdown('<div class="section-title">Confusion Matrix</div>', unsafe_allow_html=True)
+
+                cm = confusion_matrix(y_true, predictions)
+
+                fig, ax = plt.subplots(figsize=(6,5))
+                sns.heatmap(
+                    cm,
+                    annot=True,
+                    fmt="d",
+                    cmap="Blues",
+                    xticklabels=["No Disease", "Disease"],
+                    yticklabels=["No Disease", "Disease"],
+                    ax=ax
+                )
+
+                ax.set_xlabel("Predicted")
+                ax.set_ylabel("Actual")
+
+                st.pyplot(fig)
+
+            else:
+                st.info("Predictions generated successfully (no target column found).")
+
+        except Exception as e:
+            st.error(f"Error: {e}")
