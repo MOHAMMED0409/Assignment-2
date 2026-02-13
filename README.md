@@ -177,7 +177,12 @@ http://localhost:8501
 
 ---
 
-## 12. Conclusion
+## 12. Project URL
+1. Streamlit App URL: https://2025aa05293-assignment-2.streamlit.app/
+
+---
+
+## 13. Conclusion
 
 This project successfully demonstrates the implementation and comparison of six machine learning classification models for heart disease prediction.
 
