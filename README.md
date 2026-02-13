@@ -132,7 +132,7 @@ ML_Assignment_2/
 ### Step 1: Clone Repository
 
 ```
-git clone <your-github-repository-link>
+git clone https://github.com/MOHAMMED0409/Assignment-2.git
 cd ML_Assignment_2
 ```
 
